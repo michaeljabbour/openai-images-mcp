@@ -5,11 +5,39 @@ A Model Context Protocol (MCP) server that enables Claude Desktop to generate an
 ## 🎯 Key Features
 
 ### ✨ What Makes This Special
+- **🗣️ Pre-Generation Dialogue (Phase 1)** - Guided questions refine your vision before generating
+- **🧠 Automatic Prompt Enhancement** - AI improves prompts based on dialogue responses
+- **💾 Persistent Conversations** - Saved locally to `~/.openai-images-mcp/conversations/`
+- **📐 Smart Size Detection** - Auto-suggests optimal dimensions based on image type
 - **Full-Quality Images** - Always saves high-resolution PNGs (no compression)
 - **Conversational Refinement** - Iteratively improve images through natural dialogue
 - **Easy Access** - Direct file paths in chat, images saved to Downloads folder
 - **Context Preservation** - Each conversation maintains full context for coherent refinements
 - **Single Model Focus** - Uses GPT-Image-1 exclusively for consistent, high-quality results
+
+### 🆕 Phase 1: Conversational Dialogue System
+
+**What sets this apart:** Unlike typical image generation MCP servers that just wrap the OpenAI API, this server includes an intelligent dialogue system that guides you through questions BEFORE generation to get better results on the first try.
+
+**Dialogue Modes:**
+- **Quick** (1-2 questions) - Fast path when you know what you want
+- **Guided** (3-5 questions) - Balanced approach (recommended, default)
+- **Explorer** (6+ questions) - Deep dive for maximum quality
+- **Skip** - Direct generation, no questions
+
+**How It Works:**
+1. **You:** "Create a tech company logo"
+2. **System:** Asks questions about your brand, audience, style preferences
+3. **You:** Answer with options or custom text
+4. **System:** Builds enhanced prompt from your answers
+5. **Result:** Better image on first generation + conversation saved locally
+
+**Benefits:**
+- 📈 Higher first-time success rate (fewer regenerations needed)
+- 🎨 Automatic prompt quality analysis and enhancement
+- 🤖 Smart detection of image type (logo, presentation, social, product, etc.)
+- 📐 Auto-suggested image sizes based on use case
+- 💾 Local persistence - resume conversations across sessions
 
 ## 🚀 Quick Start
 
@@ -61,9 +89,35 @@ python3 test_local.py
 
 ## 🧪 Testing
 
-### Local Test Suite
+### Phase 1 Test Suite
 
-The `test_local.py` script provides an interactive test suite:
+Run the comprehensive test suite (100+ tests):
+
+```bash
+# Install test dependencies
+pip install -r requirements-test.txt
+
+# Run all tests
+./run_tests.sh
+
+# Run specific test categories
+./run_tests.sh quick        # Unit tests only
+./run_tests.sh integration  # Integration tests only
+./run_tests.sh coverage     # With coverage report
+
+# Or use pytest directly
+pytest tests/ -v
+```
+
+**Test Coverage:**
+- ✅ Dialogue system (modes, stages, progression)
+- ✅ Prompt enhancement (quality analysis, type detection)
+- ✅ Local storage (save, load, search, persistence)
+- ✅ Integration workflows (end-to-end dialogue flows)
+
+### Legacy Test Suite
+
+The `test_local.py` script provides basic API tests:
 
 ```bash
 python3 test_local.py
@@ -102,10 +156,12 @@ Generate and refine images through multi-turn conversation using the Responses A
 **Key Parameters**:
 - `prompt`: Your image description or refinement instruction
 - `conversation_id`: ID to continue a previous conversation (auto-generated if not provided)
+- **`dialogue_mode`** (NEW): "quick", "guided" (default), "explorer", or "skip"
+- **`skip_dialogue`** (NEW): Set to `true` to bypass dialogue entirely
 - `input_image_file_id`: File ID from previous generation
 - `input_image_path`: Local image file to refine
 - `assistant_model`: GPT model for processing (gpt-4o, gpt-4-turbo)
-- `size`: Image dimensions (**1024x1024**, **1024x1536**, **1536x1024** only)
+- `size`: Image dimensions - **Auto-detected if not specified** or specify: **1024x1024**, **1024x1536**, **1536x1024**
 
 **Note**: GPT-Image-1 only supports these 3 sizes. Quality, style, and transparency parameters are not available.
 
@@ -131,11 +187,33 @@ Simplified wrapper for quick, single-request image generation. Internally uses t
 
 ### 3. `openai_list_conversations`
 
-List all active image generation conversations to continue previous sessions.
+List all saved image generation conversations with Phase 1 metadata.
+
+**Returns:**
+- Conversation IDs and timestamps
+- Dialogue mode used
+- Generated images count
+- Storage location (`~/.openai-images-mcp/conversations/`)
+- Conversations persist across server restarts
 
 ## 💡 Usage Examples in Claude
 
-### Conversational Refinement (Best Experience)
+### Phase 1: Guided Dialogue (Recommended)
+
+```
+User: "Create a logo for my coffee shop"
+→ System: "Tell me about what this logo represents. What should it communicate?"
+User: "Cozy, artisanal, locally-roasted beans"
+→ System: "What visual style appeals to you?"
+User: "Minimalist, warm"
+→ System: "What color palette works best?"
+User: "Earth tones, browns and creams"
+→ System generates image with enhanced prompt based on your answers
+→ Returns: ~/Downloads/openai_image_20251022_143022_abc12345.png
+   Quality improvement: 45/100 → 85/100
+```
+
+### Conversational Refinement
 
 ```
 "Create an image of a futuristic city at sunset"
@@ -161,6 +239,16 @@ List all active image generation conversations to continue previous sessions.
 
 ## 🎨 Advanced Features
 
+### Phase 1: Persistent Conversation Storage
+
+All conversations are saved locally for future access:
+- **Location**: `~/.openai-images-mcp/conversations/`
+- **Format**: JSON files (one per conversation)
+- **Persistence**: Survives server restarts
+- **Contents**: Messages, dialogue responses, enhanced prompts, generated images
+- **Privacy**: Local-first, no cloud storage
+- **Management**: Use `openai_list_conversations` to view all saved conversations
+
 ### Conversation Management
 
 The server maintains conversation context, allowing you to:
@@ -168,6 +256,7 @@ The server maintains conversation context, allowing you to:
 - Reference previous generations
 - Build complex images iteratively
 - Upload and refine local images
+- Resume dialogues after server restart (Phase 1)
 
 ### File ID System
 
@@ -349,14 +438,30 @@ tail -f ~/Library/Logs/Claude/mcp-server-openai-images.log
 
 ## 🔐 Security Notes
 
-1. Store API keys securely as environment variables
-2. Server only accesses files you explicitly specify
-3. Conversation history is stored in memory (cleared on restart)
-4. Follow OpenAI's usage policies for generated content
+1. **API Keys**: Stored securely as environment variables
+2. **File Access**: Server only accesses files you explicitly specify
+3. **Conversation Storage** (Phase 1):
+   - Saved locally to `~/.openai-images-mcp/conversations/`
+   - No cloud storage, all data stays on your machine
+   - You control deletion (local JSON files)
+   - No encryption by default (optional for future if needed)
+   - Follows MCP best practices for local-first storage
+4. **Usage Policies**: Follow OpenAI's content policies for generated images
 
 ## 📝 Changelog
 
-### Version 3.0.0 (Current)
+### Version 4.0.0 - Phase 1 (Current)
+- **🗣️ Pre-Generation Dialogue System** - Guided questions before image generation
+- **🧠 Automatic Prompt Enhancement** - AI quality analysis and improvement
+- **💾 Persistent Local Storage** - Conversations saved to `~/.openai-images-mcp/`
+- **📐 Smart Size Detection** - Auto-suggests optimal dimensions
+- **🎯 Dialogue Modes** - Quick, Guided (default), Explorer, or Skip
+- **📊 Quality Scoring** - Analyzes prompts 0-100 for completeness
+- **🤖 Image Type Detection** - Identifies logos, presentations, social media, etc.
+- **💬 Conversation Resumption** - Pick up where you left off across sessions
+- **🧪 Comprehensive Test Suite** - 100+ unit and integration tests
+
+### Version 3.0.0
 - **✨ Full-quality images** - Always saves high-resolution PNGs (no compression)
 - **📁 Easy access** - Direct file paths returned in chat response
 - **🔧 Fixed base64 handling** - Correctly processes OpenAI's b64_json responses

@@ -25,6 +25,11 @@ from uuid import uuid4
 from pydantic import BaseModel, Field, ConfigDict
 from mcp.server.fastmcp import FastMCP
 
+# Import Phase 1 components
+from dialogue_system import DialogueManager, DialogueMode, DialogueStage, DialogueQuestion
+from prompt_enhancement import PromptEnhancer, ImageType
+from storage import get_conversation_store
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -43,9 +48,14 @@ MAX_RETRIES = 3
 # Initialize MCP server
 mcp = FastMCP("openai_images_mcp")
 
-# Store for conversation threads and file IDs
+# Store for conversation threads and file IDs (in-memory for quick access)
+# Full conversations are persisted to disk via storage.py
 conversation_store = {}
 file_store = {}
+
+# Initialize Phase 1 components
+prompt_enhancer = PromptEnhancer()
+storage = get_conversation_store()
 
 # ============================
 # Pydantic Models
@@ -71,7 +81,7 @@ class ConversationalImageInput(BaseModel):
     model_config = ConfigDict(
         str_strip_whitespace=True,
         validate_assignment=True,
-        extra='forbid'
+        extra='allow'  # Changed from 'forbid' to allow dialogue_responses
     )
 
     prompt: str = Field(
@@ -84,6 +94,21 @@ class ConversationalImageInput(BaseModel):
         default=None,
         description="Conversation ID from previous generation to continue refining that image. Omit to start a new conversation. Auto-generated if not provided."
     )
+
+    # Phase 1: Dialogue System Parameters
+    dialogue_mode: Optional[str] = Field(
+        default="guided",
+        description="Dialogue depth: 'quick' (1-2 questions), 'guided' (3-5 questions, recommended), 'explorer' (deep dive), 'skip' (direct generation)"
+    )
+    skip_dialogue: Optional[bool] = Field(
+        default=False,
+        description="Set to true to skip dialogue and generate immediately"
+    )
+    dialogue_responses: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="User responses to dialogue questions (internal use)"
+    )
+
     input_image_file_id: Optional[str] = Field(
         default=None,
         description="File ID from OpenAI of a previously generated image to refine. Obtained from prior tool responses. Cannot be used with input_image_path."
@@ -97,8 +122,8 @@ class ConversationalImageInput(BaseModel):
         description="GPT model for understanding refinement instructions. Recommended: gpt-4o for best results. Options: gpt-4o, gpt-4-turbo."
     )
     size: Optional[ImageSize] = Field(
-        default=ImageSize.SIZE_1024x1024,
-        description="Image dimensions. Options: 1024x1024 (square), 1024x1536 (portrait), 1536x1024 (landscape)."
+        default=None,  # Will be auto-detected from prompt if not specified
+        description="Image dimensions. Auto-detected if not specified. Options: 1024x1024 (square), 1024x1536 (portrait), 1536x1024 (landscape)."
     )
     output_format: Optional[OutputFormat] = Field(
         default=OutputFormat.MARKDOWN,
@@ -454,6 +479,13 @@ def format_response_json(data: Dict[str, Any]) -> str:
 async def openai_conversational_image(params: ConversationalImageInput):
     """Generate images conversationally with iterative refinement using GPT-Image-1.
 
+    Phase 1 Feature: Pre-generation dialogue system that guides you through questions
+    to refine your vision before generating. Choose your dialogue depth:
+    - "quick": 1-2 questions, fast path
+    - "guided": 3-5 questions, balanced (recommended)
+    - "explorer": Deep exploration with 6+ questions
+    - "skip": Direct generation, no dialogue
+
     Enables multi-turn image creation where each prompt builds on previous results.
     Maintains conversation context for natural refinements like "make the sky darker"
     or "add more trees". Best for exploratory creative work requiring multiple iterations.
@@ -462,6 +494,8 @@ async def openai_conversational_image(params: ConversationalImageInput):
 
     Usage Pattern:
         1. Initial generation: "A cozy coffee shop interior"
+           → Dialogue questions (if mode != "skip")
+           → Answer questions to refine your vision
            → Returns image inline and conversation_id
         2. Refine: "Add more plants and warmer lighting" (with same conversation_id)
            → Returns refined image inline
@@ -471,6 +505,7 @@ async def openai_conversational_image(params: ConversationalImageInput):
         ✓ Exploratory creative work needing multiple iterations
         ✓ When desired result requires back-and-forth refinement
         ✓ Building complex scenes incrementally
+        ✓ Want guidance to improve your prompts
 
     When Not to Use:
         ✗ Single well-defined requests (use openai_generate_image instead)
@@ -487,6 +522,145 @@ async def openai_conversational_image(params: ConversationalImageInput):
         # Generate or use existing conversation ID
         conversation_id = params.conversation_id or generate_conversation_id()
 
+        # Load existing conversation from storage if available
+        stored_conversation = storage.load_conversation(conversation_id)
+        if stored_conversation:
+            logger.info(f"Loaded existing conversation: {conversation_id}")
+
+        # Phase 1: Check if dialogue is needed
+        dialogue_mode_str = params.dialogue_mode or "guided"
+        needs_dialogue = (
+            dialogue_mode_str != "skip" and
+            not params.skip_dialogue and
+            not params.input_image_file_id  # Skip dialogue for refinements
+        )
+
+        if needs_dialogue:
+            # Initialize dialogue manager
+            try:
+                dialogue_mode = DialogueMode(dialogue_mode_str.lower())
+            except ValueError:
+                dialogue_mode = DialogueMode.GUIDED
+
+            dialogue_manager = DialogueManager(dialogue_mode)
+
+            # Get dialogue responses from params or stored conversation
+            dialogue_responses = params.dialogue_responses or {}
+            if stored_conversation and "metadata" in stored_conversation:
+                stored_responses = stored_conversation["metadata"].get("dialogue_responses", {})
+                # Merge stored responses with new ones
+                dialogue_responses = {**stored_responses, **dialogue_responses}
+
+            # Get next question
+            next_question = dialogue_manager.get_next_question(
+                params.prompt,
+                dialogue_responses
+            )
+
+            if next_question:
+                # Still have questions - return question to user
+                progress = dialogue_manager.get_stage_progress()
+
+                # Save dialogue state to storage
+                messages = stored_conversation.get("messages", []) if stored_conversation else []
+                messages.append({
+                    "role": "assistant",
+                    "content": next_question.question,
+                    "timestamp": datetime.now().isoformat(),
+                    "stage": next_question.stage.value
+                })
+
+                storage.save_conversation(
+                    conversation_id,
+                    messages,
+                    metadata={
+                        "dialogue_mode": dialogue_mode_str,
+                        "dialogue_responses": dialogue_responses,
+                        "original_prompt": params.prompt,
+                        "current_stage": next_question.stage.value
+                    }
+                )
+
+                # Format question for user
+                response_lines = [
+                    f"## 💬 Let's Refine Your Vision",
+                    f"",
+                    f"**Progress:** {progress['completed_stages']}/{progress['total_stages']} questions ({progress['progress_percent']}%)",
+                    f"**Stage:** {next_question.stage.value.replace('_', ' ').title()}",
+                    f"",
+                    f"### {next_question.question}",
+                ]
+
+                if next_question.options:
+                    response_lines.append("")
+                    response_lines.append("**Options:**")
+                    for i, option in enumerate(next_question.options, 1):
+                        response_lines.append(f"{i}. {option}")
+                    response_lines.append("")
+                    response_lines.append("*You can choose an option or provide your own answer.*")
+
+                if next_question.context:
+                    response_lines.append("")
+                    response_lines.append(f"💡 **Why this matters:** {next_question.context}")
+
+                response_lines.extend([
+                    "",
+                    f"🔗 **Conversation ID:** `{conversation_id}`",
+                    "",
+                    "*Once you answer, I'll continue with the next question or generate your image if we're done!*"
+                ])
+
+                return "\n".join(response_lines)
+
+            # Dialogue complete - build enhanced prompt
+            logger.info(f"Dialogue complete. Building enhanced prompt...")
+            enhanced_prompt = dialogue_manager.build_enhanced_prompt(
+                params.prompt,
+                dialogue_responses
+            )
+            logger.info(f"Enhanced prompt: {enhanced_prompt}")
+
+            # Use enhanced prompt for generation
+            prompt_to_use = enhanced_prompt
+
+            # Save dialogue completion to storage
+            messages = stored_conversation.get("messages", []) if stored_conversation else []
+            messages.append({
+                "role": "assistant",
+                "content": f"Dialogue complete! Generating image with enhanced prompt...",
+                "timestamp": datetime.now().isoformat()
+            })
+
+            storage.save_conversation(
+                conversation_id,
+                messages,
+                metadata={
+                    "dialogue_mode": dialogue_mode_str,
+                    "dialogue_responses": dialogue_responses,
+                    "original_prompt": params.prompt,
+                    "enhanced_prompt": enhanced_prompt,
+                    "dialogue_complete": True
+                }
+            )
+        else:
+            # No dialogue - use original prompt
+            prompt_to_use = params.prompt
+            logger.info("Skipping dialogue, using original prompt")
+
+        # Auto-detect image size if not specified
+        if params.size is None:
+            # Detect image type and suggest size
+            image_type = prompt_enhancer.detect_image_type(prompt_to_use)
+            suggested_size_str = prompt_enhancer.suggest_size_from_type(image_type, prompt_to_use)
+            # Convert string to ImageSize enum
+            size_map = {
+                "1024x1024": ImageSize.SIZE_1024x1024,
+                "1024x1536": ImageSize.SIZE_1024x1536,
+                "1536x1024": ImageSize.SIZE_1536x1024
+            }
+            params.size = size_map.get(suggested_size_str, ImageSize.SIZE_1024x1024)
+            logger.info(f"Auto-detected size: {params.size.value} for image type: {image_type.value}")
+
         # Handle input image if provided
         input_file_id = params.input_image_file_id
         if params.input_image_path and not input_file_id:
@@ -501,7 +675,7 @@ async def openai_conversational_image(params: ConversationalImageInput):
 
         # Call the Responses API
         result = await call_responses_api(
-            prompt=params.prompt,
+            prompt=prompt_to_use,
             api_key=api_key,
             conversation_id=conversation_id,
             assistant_model=params.assistant_model,
@@ -532,16 +706,49 @@ async def openai_conversational_image(params: ConversationalImageInput):
                     logger.info(f"Image saved to: {save_path} ({size_kb:.1f} KB)")
                     logger.info(f"Conversation ID: {conversation_id}")
 
-                    # Return text with file path (no inline image display)
-                    return f"""✅ **Image Generated Successfully**
+                    # Save image info to storage
+                    image_info = {
+                        "filename": filename,
+                        "path": str(save_path),
+                        "size_kb": round(size_kb, 1),
+                        "timestamp": timestamp,
+                        "size": params.size.value,
+                        "prompt_used": prompt_to_use if 'prompt_to_use' in locals() else params.prompt
+                    }
 
-📁 **File saved to:** `{save_path}`
-📏 **Size:** {size_kb:.1f} KB
-🔗 **Conversation ID:** `{conversation_id}`
+                    # Add to conversation storage
+                    storage.add_generated_image(conversation_id, image_info)
+                    logger.info(f"Image info saved to conversation storage")
 
-To view the image, open the file from your Downloads folder.
+                    # Build response message
+                    response_parts = [
+                        "✅ **Image Generated Successfully**",
+                        "",
+                        f"📁 **File saved to:** `{save_path}`",
+                        f"📏 **Size:** {size_kb:.1f} KB",
+                        f"🔗 **Conversation ID:** `{conversation_id}`",
+                    ]
 
-To refine this image, just describe what you'd like to change (e.g., "make it darker", "add more detail") and I'll use the conversation context automatically."""
+                    # Add dialogue info if dialogue was used
+                    if needs_dialogue and 'enhanced_prompt' in locals():
+                        quality_score = prompt_enhancer.analyze_prompt_quality(params.prompt)
+                        response_parts.extend([
+                            "",
+                            "### 🎨 Prompt Enhancement",
+                            f"**Original prompt quality:** {quality_score.score}/100",
+                            f"**Enhanced with dialogue responses**",
+                            "",
+                            f"*Your answers helped create a more detailed prompt for better results!*"
+                        ])
+
+                    response_parts.extend([
+                        "",
+                        "To view the image, open the file from your Downloads folder.",
+                        "",
+                        "To refine this image, just describe what you'd like to change (e.g., \"make it darker\", \"add more detail\") and I'll use the conversation context automatically."
+                    ])
+
+                    return "\n".join(response_parts)
 
         # Fallback to text response if no image
         if params.output_format == OutputFormat.MARKDOWN:
@@ -593,20 +800,33 @@ async def openai_generate_image(params: GenerateImageInput):
 
 @mcp.tool(name="openai_list_conversations")
 async def openai_list_conversations() -> str:
-    """List all active image generation conversations for session management.
+    """List all saved image generation conversations for session management.
 
-    Shows conversation IDs and message history so you can continue refining
-    images from previous requests. Useful when you need to find a conversation_id
-    from an earlier session or see how many refinement iterations have occurred.
+    Phase 1 Feature: Shows conversation IDs, message history, dialogue progress, and
+    generated images from persistent local storage. Conversations persist across
+    server restarts and are stored in ~/.openai-images-mcp/conversations/
 
-    Note: Conversations are stored in memory and cleared when the server restarts.
+    Useful for:
+    - Finding a conversation_id from an earlier session
+    - Seeing how many refinement iterations occurred
+    - Tracking dialogue mode and responses
+    - Viewing generated images history
 
     Returns:
-        JSON with active conversation count, IDs, message counts, and first prompts.
+        JSON with conversation summaries including IDs, message counts, first prompts,
+        dialogue info, and generated images.
     """
     try:
-        conversations = []
-        for conv_id, messages in conversation_store.items():
+        # Get recent conversations from persistent storage
+        recent_conversations = storage.get_recent_conversations(limit=20)
+
+        # Also include in-memory conversations that haven't been persisted yet
+        in_memory_conv_ids = set(conversation_store.keys())
+        persisted_conv_ids = set(conv["conversation_id"] for conv in recent_conversations)
+
+        # Add in-memory conversations not yet persisted
+        for conv_id in in_memory_conv_ids - persisted_conv_ids:
+            messages = conversation_store[conv_id]
             # Extract first prompt safely
             first_prompt = "Unknown"
             if messages and "content" in messages[0]:
@@ -617,15 +837,24 @@ async def openai_list_conversations() -> str:
                             first_prompt = item.get("text", "Unknown")[:100]
                             break
 
-            conversations.append({
+            recent_conversations.append({
                 "conversation_id": conv_id,
                 "message_count": len(messages),
-                "first_prompt": first_prompt
+                "first_prompt": first_prompt,
+                "dialogue_mode": None,
+                "has_images": False,
+                "updated_at": None,
+                "source": "in-memory (not yet persisted)"
             })
 
+        # Get storage stats
+        stats = storage.get_storage_stats()
+
         return json.dumps({
-            "active_conversations": len(conversations),
-            "conversations": conversations
+            "total_conversations": stats["total_conversations"],
+            "storage_size_mb": stats["total_size_mb"],
+            "storage_directory": stats["storage_directory"],
+            "recent_conversations": recent_conversations
         }, indent=2)
 
     except Exception as e:
