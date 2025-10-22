@@ -352,29 +352,11 @@ async def call_responses_api(
                                 image_b64 = first_image["b64_json"]
                                 logger.info(f"Received base64 image data (length: {len(image_b64)} chars)")
 
-                                # Save to Downloads folder for easy access
-                                import tempfile
-                                from pathlib import Path
-
-                                # Get user's Downloads folder
-                                downloads_dir = Path.home() / "Downloads"
-                                downloads_dir.mkdir(exist_ok=True)
-
-                                # Create unique filename with timestamp
-                                from datetime import datetime
-                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                filename = f"openai_image_{timestamp}_{uuid4().hex[:8]}.png"
-                                save_path = downloads_dir / filename
-
-                                # Decode and save
-                                save_path.write_bytes(base64.b64decode(image_b64))
-
+                                # Store image data (actual save happens in tool function)
                                 image_data = {
-                                    "save_path": str(save_path),
-                                    "filename": filename,
+                                    "b64_json": image_b64,
                                     "b64_preview": image_b64[:100] + "..." if len(image_b64) > 100 else image_b64
                                 }
-                                logger.info(f"Image saved to: {save_path}")
 
                             # Fallback for url (shouldn't happen with gpt-image-1 but keeping for safety)
                             elif "url" in first_image:
