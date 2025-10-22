@@ -1,0 +1,21 @@
+# OpenAI Images MCP Server Requirements
+# Install with: pip install -r requirements.txt
+
+# MCP SDK for Python
+mcp>=1.16.0
+
+# FastMCP framework with Image utilities
+fastmcp>=2.12.5
+
+# Data validation
+pydantic>=2.12.3
+
+# Async HTTP client
+httpx>=0.24.0
+
+# Note: Pillow not required - removed compression feature
+
+# Optional: For development and testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+python-dotenv>=1.0.0

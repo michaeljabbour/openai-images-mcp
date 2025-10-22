@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "openai-images": {
+      "command": "python3",
+      "args": [
+        "/absolute/path/to/openai_images_mcp.py"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "your-openai-api-key-here"
+      }
+    }
+  }
+}
