@@ -29,6 +29,7 @@ from mcp.server.fastmcp import FastMCP
 from dialogue_system import DialogueManager, DialogueMode, DialogueStage, DialogueQuestion
 from prompt_enhancement import PromptEnhancer, ImageType
 from storage import get_conversation_store
+from image_verification import get_image_verifier
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -56,6 +57,7 @@ file_store = {}
 # Initialize Phase 1 components
 prompt_enhancer = PromptEnhancer()
 storage = get_conversation_store()
+image_verifier = get_image_verifier()
 
 # ============================
 # Pydantic Models
@@ -706,14 +708,31 @@ async def openai_conversational_image(params: ConversationalImageInput):
                     logger.info(f"Image saved to: {save_path} ({size_kb:.1f} KB)")
                     logger.info(f"Conversation ID: {conversation_id}")
 
-                    # Save image info to storage
+                    # Phase 1: Verify image quality before returning
+                    logger.info("Verifying generated image quality...")
+                    verification = image_verifier.verify_image(
+                        image_path=str(save_path),
+                        original_prompt=params.prompt,
+                        enhanced_prompt=prompt_to_use if 'prompt_to_use' in locals() else params.prompt,
+                        dialogue_responses=dialogue_responses if 'dialogue_responses' in locals() else None,
+                        image_type=image_type.value if 'image_type' in locals() else None
+                    )
+                    logger.info(f"Verification result: passed={verification.passed}, confidence={verification.confidence}")
+
+                    # Save image info to storage (including verification)
                     image_info = {
                         "filename": filename,
                         "path": str(save_path),
                         "size_kb": round(size_kb, 1),
                         "timestamp": timestamp,
                         "size": params.size.value,
-                        "prompt_used": prompt_to_use if 'prompt_to_use' in locals() else params.prompt
+                        "prompt_used": prompt_to_use if 'prompt_to_use' in locals() else params.prompt,
+                        "verification": {
+                            "passed": verification.passed,
+                            "confidence": verification.confidence,
+                            "issues": verification.issues,
+                            "timestamp": verification.timestamp
+                        }
                     }
 
                     # Add to conversation storage
@@ -728,6 +747,22 @@ async def openai_conversational_image(params: ConversationalImageInput):
                         f"📏 **Size:** {size_kb:.1f} KB",
                         f"🔗 **Conversation ID:** `{conversation_id}`",
                     ]
+
+                    # Add verification report
+                    if verification:
+                        response_parts.extend([
+                            "",
+                            verification.analysis
+                        ])
+
+                        # Add warnings if issues detected
+                        if verification.issues:
+                            response_parts.extend([
+                                "",
+                                "⚠️ **Issues Detected:**"
+                            ])
+                            for issue in verification.issues:
+                                response_parts.append(f"  • {issue}")
 
                     # Add dialogue info if dialogue was used
                     if needs_dialogue and 'enhanced_prompt' in locals():

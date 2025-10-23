@@ -7,6 +7,7 @@ A Model Context Protocol (MCP) server that enables Claude Desktop to generate an
 ### ✨ What Makes This Special
 - **🗣️ Pre-Generation Dialogue (Phase 1)** - Guided questions refine your vision before generating
 - **🧠 Automatic Prompt Enhancement** - AI improves prompts based on dialogue responses
+- **✅ Image Quality Verification** - Automatically checks images before delivery
 - **💾 Persistent Conversations** - Saved locally to `~/.openai-images-mcp/conversations/`
 - **📐 Smart Size Detection** - Auto-suggests optimal dimensions based on image type
 - **Full-Quality Images** - Always saves high-resolution PNGs (no compression)
@@ -35,6 +36,7 @@ A Model Context Protocol (MCP) server that enables Claude Desktop to generate an
 **Benefits:**
 - 📈 Higher first-time success rate (fewer regenerations needed)
 - 🎨 Automatic prompt quality analysis and enhancement
+- ✅ Image verification before delivery (checks requirements match)
 - 🤖 Smart detection of image type (logo, presentation, social, product, etc.)
 - 📐 Auto-suggested image sizes based on use case
 - 💾 Local persistence - resume conversations across sessions
@@ -453,13 +455,14 @@ tail -f ~/Library/Logs/Claude/mcp-server-openai-images.log
 ### Version 4.0.0 - Phase 1 (Current)
 - **🗣️ Pre-Generation Dialogue System** - Guided questions before image generation
 - **🧠 Automatic Prompt Enhancement** - AI quality analysis and improvement
+- **✅ Image Quality Verification** - Automatically checks images before delivery
 - **💾 Persistent Local Storage** - Conversations saved to `~/.openai-images-mcp/`
 - **📐 Smart Size Detection** - Auto-suggests optimal dimensions
 - **🎯 Dialogue Modes** - Quick, Guided (default), Explorer, or Skip
 - **📊 Quality Scoring** - Analyzes prompts 0-100 for completeness
 - **🤖 Image Type Detection** - Identifies logos, presentations, social media, etc.
 - **💬 Conversation Resumption** - Pick up where you left off across sessions
-- **🧪 Comprehensive Test Suite** - 100+ unit and integration tests
+- **🧪 Comprehensive Test Suite** - 146 unit and integration tests
 
 ### Version 3.0.0
 - **✨ Full-quality images** - Always saves high-resolution PNGs (no compression)
