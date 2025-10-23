@@ -819,12 +819,13 @@ async def openai_generate_image(params: GenerateImageInput):
         ImageContent that displays inline in Claude Desktop.
     """
     try:
-        # Convert to conversational parameters
+        # Convert to conversational parameters (skip dialogue for simple tool)
         conv_params = ConversationalImageInput(
             prompt=params.prompt,
             size=params.size,
             output_format=params.output_format,
-            api_key=params.api_key
+            api_key=params.api_key,
+            skip_dialogue=True  # Force direct generation without dialogue
         )
         return await openai_conversational_image(conv_params)
 
