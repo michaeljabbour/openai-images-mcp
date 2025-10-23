@@ -481,12 +481,17 @@ def format_response_json(data: Dict[str, Any]) -> str:
 async def openai_conversational_image(params: ConversationalImageInput):
     """Generate images conversationally with iterative refinement using GPT-Image-1.
 
+    **USE THIS TOOL when:**
+    - User gives a vague/incomplete prompt that needs refinement (e.g., "logo for my coffee shop")
+    - User wants iterative refinement across multiple messages
+    - User explicitly asks for guidance or suggestions
+
     Phase 1 Feature: Pre-generation dialogue system that guides you through questions
     to refine your vision before generating. Choose your dialogue depth:
     - "quick": 1-2 questions, fast path
-    - "guided": 3-5 questions, balanced (recommended)
+    - "guided": 3-5 questions, balanced (DEFAULT - use if not specified)
     - "explorer": Deep exploration with 6+ questions
-    - "skip": Direct generation, no dialogue
+    - "skip": Direct generation, no dialogue (like openai_generate_image)
 
     Enables multi-turn image creation where each prompt builds on previous results.
     Maintains conversation context for natural refinements like "make the sky darker"
@@ -496,21 +501,24 @@ async def openai_conversational_image(params: ConversationalImageInput):
 
     Usage Pattern:
         1. Initial generation: "A cozy coffee shop interior"
-           → Dialogue questions (if mode != "skip")
-           → Answer questions to refine your vision
+           → System asks 3-5 dialogue questions (guided mode)
+           → User answers to refine vision
            → Returns image inline and conversation_id
         2. Refine: "Add more plants and warmer lighting" (with same conversation_id)
+           → No new dialogue, applies changes directly
            → Returns refined image inline
         3. Continue refining with the same conversation_id as needed
 
     When to Use:
+        ✓ User provides vague/incomplete prompt like "create a logo" or "design a poster"
         ✓ Exploratory creative work needing multiple iterations
         ✓ When desired result requires back-and-forth refinement
         ✓ Building complex scenes incrementally
-        ✓ Want guidance to improve your prompts
 
-    When Not to Use:
-        ✗ Single well-defined requests (use openai_generate_image instead)
+    When NOT to Use (use openai_generate_image instead):
+        ✗ User provides detailed, complete prompt with all specifics
+        ✗ User wants immediate generation without questions
+        ✗ Prompt already includes style, colors, mood, composition details
 
     Args:
         params: Input parameters including prompt, conversation ID, and optional input image.
@@ -800,17 +808,20 @@ async def openai_conversational_image(params: ConversationalImageInput):
 async def openai_generate_image(params: GenerateImageInput):
     """Generate a single image from a text description using GPT-Image-1.
 
+    **USE THIS TOOL when the user provides a detailed, well-defined prompt and wants direct generation.**
+    NO dialogue questions will be asked. Image generates immediately.
+
     Quick, single-request image generation for straightforward requests. Images are
     displayed inline in Claude Desktop and also saved to ~/Downloads/. For iterative
     refinement across multiple prompts, use openai_conversational_image instead.
 
     Supported sizes: 1024x1024 (square), 1024x1536 (portrait), 1536x1024 (landscape)
 
-    Examples:
-        • "A serene mountain lake at sunset, photorealistic style"
-        • "Abstract geometric patterns in vibrant blues and purples"
-        • "Minimalist tech company logo with circuit board patterns"
-        • "A cozy reading nook with bookshelves and warm lighting"
+    Examples of well-defined prompts (use this tool):
+        • "A serene mountain lake at sunset, photorealistic style, golden hour lighting"
+        • "Abstract geometric patterns in vibrant blues and purples, sharp edges"
+        • "Minimalist tech company logo with circuit board patterns, clean design"
+        • "TRON movie style scene, neon cyan and magenta, digital grid, cinematic"
 
     Args:
         params: Input parameters including prompt and optional size.
