@@ -6,12 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Python MCP (Model Context Protocol) server that provides conversational image generation capabilities to Claude Desktop using OpenAI's GPT-Image-1 model.
 
-**Key Features**:
-- **Full-quality images** - Always saves high-resolution PNGs (no compression)
-- **Easy file access** - Direct file paths returned in chat response
-- **Downloads folder** - All images saved to ~/Downloads/
-- **Conversational refinement** - Multi-turn image editing with context preservation
-- **Single model focus** - GPT-Image-1 only (simplified from v2.0)
+**Phase 1 Features**:
+- **Pre-Generation Dialogue** - Guided questions refine vision before generating (4 modes: quick/guided/explorer/skip)
+- **Automatic Prompt Enhancement** - AI quality analysis and improvement (0-100 scoring)
+- **Image Quality Verification** - Type-specific checklists before delivery
+- **Persistent Conversations** - Local storage in ~/.openai-images-mcp/conversations/
+- **Smart Size Detection** - Auto-suggests dimensions based on image type
+- **Conversational Refinement** - Multi-turn editing with context preservation
+- **Full-quality images** - High-resolution PNGs saved to ~/Downloads/
 
 ## Development Commands
 
