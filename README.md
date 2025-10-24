@@ -12,7 +12,7 @@ A Model Context Protocol (MCP) server that enables Claude Desktop to generate an
 - **📐 Smart Size Detection** - Auto-suggests optimal dimensions based on image type
 - **Full-Quality Images** - Always saves high-resolution PNGs (no compression)
 - **Conversational Refinement** - Iteratively improve images through natural dialogue
-- **Easy Access** - Direct file paths in chat, images saved to Downloads folder
+- **Organized Storage** - Images saved to ~/Downloads/images/ (auto-organized subfolder)
 - **Context Preservation** - Each conversation maintains full context for coherent refinements
 - **Single Model Focus** - Uses GPT-Image-1 exclusively for consistent, high-quality results
 
@@ -170,7 +170,7 @@ Generate and refine images through multi-turn conversation using the Responses A
 **Example Conversation Flow**:
 ```
 User: "Generate a cozy coffee shop interior"
-→ Returns file path: ~/Downloads/openai_image_20251021_143022_abc12345.png
+→ Returns file path: ~/Downloads/images/openai_image_20251021_143022_abc12345.png
 
 User: "Make it more modern with industrial elements"
 → Returns new file path (conversation context maintained automatically)
@@ -301,15 +301,16 @@ When using the Responses API:
 ### File Management
 
 The server automatically:
-- Saves full-quality PNG to ~/Downloads/ folder
+- Saves full-quality PNG to organized folder (~/Downloads/images/ or ~/Downloads/images-mcp/)
+- Creates subfolder automatically to keep Downloads organized
 - Returns direct file path in chat response
 - Maintains conversation IDs for refinement
 - Uses timestamped filenames for uniqueness
 
 **File naming**:
 - Format: `openai_image_YYYYMMDD_HHMMSS_XXXXXXXX.png`
-- Example: `openai_image_20251021_143022_abc12345.png`
-- Easy to find recent images by sorting Downloads by date
+- Example: `~/Downloads/images/openai_image_20251021_143022_abc12345.png`
+- Easy to find recent images by sorting by date
 
 ## 🔧 Troubleshooting
 

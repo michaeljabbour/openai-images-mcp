@@ -39,7 +39,45 @@ logger = logging.getLogger(__name__)
 # Helper Functions
 # ============================
 
-# Removed compression - always save full-quality PNG to Downloads
+def get_downloads_directory() -> Path:
+    """Get the appropriate downloads directory for images.
+
+    Tries to use ~/Downloads/images/ for organization.
+    If that directory already exists (user might be using it),
+    falls back to ~/Downloads/images-mcp/ to avoid conflicts.
+    """
+    downloads_base = Path.home() / "Downloads"
+
+    # Try preferred directory first
+    preferred_dir = downloads_base / "images"
+    fallback_dir = downloads_base / "images-mcp"
+
+    # If preferred doesn't exist, create and use it
+    if not preferred_dir.exists():
+        preferred_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Created images directory: {preferred_dir}")
+        return preferred_dir
+
+    # If preferred exists but is empty (we created it previously), use it
+    if preferred_dir.is_dir() and not any(preferred_dir.iterdir()):
+        return preferred_dir
+
+    # If preferred exists and has non-openai-images content, use fallback
+    # Check if directory has any files that aren't our openai_image_*.png pattern
+    if preferred_dir.is_dir():
+        files = list(preferred_dir.glob("*"))
+        non_mcp_files = [f for f in files if not f.name.startswith("openai_image_")]
+
+        if non_mcp_files:
+            # User is using this directory for other stuff, use fallback
+            fallback_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Using fallback directory to avoid conflicts: {fallback_dir}")
+            return fallback_dir
+
+    # Default to preferred
+    return preferred_dir
+
+# Removed compression - always save full-quality PNG to organized Downloads folder
 
 # Constants
 API_BASE_URL = "https://api.openai.com/v1"
@@ -497,7 +535,8 @@ async def openai_conversational_image(params: ConversationalImageInput):
     Maintains conversation context for natural refinements like "make the sky darker"
     or "add more trees". Best for exploratory creative work requiring multiple iterations.
 
-    Images are displayed inline in Claude Desktop and also saved to ~/Downloads/.
+    Images are displayed inline in Claude Desktop and also saved to ~/Downloads/images/
+    (or ~/Downloads/images-mcp/ if images/ is already in use).
 
     Usage Pattern:
         1. Initial generation: "A cozy coffee shop interior"
@@ -701,9 +740,8 @@ async def openai_conversational_image(params: ConversationalImageInput):
                 if "b64_json" in first_image:
                     image_b64 = first_image["b64_json"]
 
-                    # Save full-quality PNG to Downloads
-                    downloads_dir = Path.home() / "Downloads"
-                    downloads_dir.mkdir(exist_ok=True)
+                    # Save full-quality PNG to organized Downloads folder
+                    downloads_dir = get_downloads_directory()
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     filename = f"openai_image_{timestamp}_{uuid4().hex[:8]}.png"
                     save_path = downloads_dir / filename
@@ -812,8 +850,9 @@ async def openai_generate_image(params: GenerateImageInput):
     NO dialogue questions will be asked. Image generates immediately.
 
     Quick, single-request image generation for straightforward requests. Images are
-    displayed inline in Claude Desktop and also saved to ~/Downloads/. For iterative
-    refinement across multiple prompts, use openai_conversational_image instead.
+    displayed inline in Claude Desktop and also saved to ~/Downloads/images/ (or
+    ~/Downloads/images-mcp/ if images/ is already in use). For iterative refinement
+    across multiple prompts, use openai_conversational_image instead.
 
     Supported sizes: 1024x1024 (square), 1024x1536 (portrait), 1536x1024 (landscape)
 
