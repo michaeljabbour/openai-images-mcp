@@ -12,7 +12,7 @@ A Model Context Protocol (MCP) server that enables Claude Desktop to generate an
 - **📐 Smart Size Detection** - Auto-suggests optimal dimensions based on image type
 - **Full-Quality Images** - Always saves high-resolution PNGs (no compression)
 - **Conversational Refinement** - Iteratively improve images through natural dialogue
-- **Organized Storage** - Images saved to ~/Downloads/images/ (auto-organized subfolder)
+- **Organized Storage** - Images saved to Downloads/images/ subfolder (auto-created, cross-platform)
 - **Context Preservation** - Each conversation maintains full context for coherent refinements
 - **Single Model Focus** - Uses GPT-Image-1 exclusively for consistent, high-quality results
 
@@ -301,7 +301,9 @@ When using the Responses API:
 ### File Management
 
 The server automatically:
-- Saves full-quality PNG to organized folder (~/Downloads/images/ or ~/Downloads/images-mcp/)
+- Saves full-quality PNG to organized subfolder
+  - **macOS/Linux:** `~/Downloads/images/`
+  - **Windows:** `%USERPROFILE%/Downloads/images/`
 - Creates subfolder automatically to keep Downloads organized
 - Returns direct file path in chat response
 - Maintains conversation IDs for refinement
@@ -309,7 +311,8 @@ The server automatically:
 
 **File naming**:
 - Format: `openai_image_YYYYMMDD_HHMMSS_XXXXXXXX.png`
-- Example: `~/Downloads/images/openai_image_20251021_143022_abc12345.png`
+- Example (macOS): `~/Downloads/images/openai_image_20251021_143022_abc12345.png`
+- Example (Windows): `C:\Users\YourName\Downloads\images\openai_image_20251021_143022_abc12345.png`
 - Easy to find recent images by sorting by date
 
 ## 🔧 Troubleshooting
