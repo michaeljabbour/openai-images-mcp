@@ -198,46 +198,77 @@ List all saved image generation conversations with Phase 1 metadata.
 - Storage location (`~/.openai-images-mcp/conversations/`)
 - Conversations persist across server restarts
 
-## 💡 Usage Examples in Claude
+## 💡 Usage & Testing
 
-### Phase 1: Guided Dialogue (Recommended)
+### Quick Start Test (5 minutes)
 
-```
-User: "Create a logo for my coffee shop"
-→ System: "Tell me about what this logo represents. What should it communicate?"
-User: "Cozy, artisanal, locally-roasted beans"
-→ System: "What visual style appeals to you?"
-User: "Minimalist, warm"
-→ System: "What color palette works best?"
-User: "Earth tones, browns and creams"
-→ System generates image with enhanced prompt based on your answers
-→ Returns: ~/Downloads/openai_image_20251022_143022_abc12345.png
-   Quality improvement: 45/100 → 85/100
-```
-
-### Conversational Refinement
+Try these prompts to test all major features:
 
 ```
-"Create an image of a futuristic city at sunset"
-→ Claude generates initial image
+1. "Create a logo for my coffee shop"
+   → Answer 3-5 dialogue questions
+   → Verify checklist appears with logo-specific requirements
 
-"Make the buildings taller and add flying vehicles"
-→ Claude refines using same conversation
+2. "Generate abstract art with vibrant colors and geometric patterns"
+   → Should generate immediately without dialogue (detailed prompt)
 
-"Change the color palette to cyberpunk neon"
-→ Claude continues refinement
+3. "List all my conversations"
+   → See saved conversation history
 
-"Add rain and reflections on the streets"
-→ Final refined image
+4. "Make it brighter"
+   → Refines last image without new dialogue questions
 ```
 
-### Direct Generation
+### Feature-Specific Test Prompts
+
+#### Guided Dialogue Mode (Default)
+```
+"Create a logo for Sunrise Roasters coffee shop"
+```
+**Expected:** 3-5 questions about branding, style, colors
+**Result:** Enhanced prompt with higher quality score
+
+#### Skip Dialogue Mode (Direct Generation)
+```
+"Skip dialogue. Generate a TRON movie style scene with a figure on a glowing
+digital grid, neon cyan and magenta lights, text 'INNOVATE 2025', cinematic lighting"
+```
+**Expected:** No dialogue, immediate generation
+**Result:** Verification checklist mentions TRON elements, text, colors
+
+#### Smart Size Detection
+```
+"Create a PowerPoint slide background for a tech presentation"
+```
+**Expected:** Auto-detects presentation type, suggests 1536x1024 (landscape)
 
 ```
-"Generate a photorealistic eagle in flight"
-"Make a portrait in the style of Van Gogh"
-"Create a minimalist logo for a tech company"
+"Create an Instagram story about travel"
 ```
+**Expected:** Auto-detects social media, suggests 1024x1536 (portrait)
+
+#### Iterative Refinement
+```
+1. "Create a cozy coffee shop interior"
+2. "Make it more modern with industrial elements"
+3. "Add more plants and warmer lighting"
+```
+**Expected:** Dialogue only on first prompt, context maintained throughout
+
+#### Image Verification
+```
+"Create a motivational poster with the text 'NEVER GIVE UP' in bold letters"
+```
+**Expected:** Verification checklist explicitly mentions checking for text presence
+
+#### Conversation Persistence
+```
+1. Start: "Create a mountain landscape"
+2. Answer 2 questions, note conversation_id
+3. Restart Claude Desktop
+4. "Resume conversation [conversation_id]"
+```
+**Expected:** Loads from ~/.openai-images-mcp/conversations/, continues where you left off
 
 ## 🎨 Advanced Features
 
