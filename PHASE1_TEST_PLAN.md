@@ -50,7 +50,7 @@ Create a logo for my coffee shop called "Sunrise Roasters"
 
 **Prompt:**
 ```
-Skip dialogue mode. Generate a TRON movie style scene with a figure standing on a glowing digital grid, neon cyan and magenta lights, text overlay saying "DEATH TO THE SDLC" in futuristic font, cinematic lighting
+Skip dialogue mode. Generate a TRON movie style scene with a figure standing on a glowing digital grid, neon cyan and magenta lights, text overlay saying "INNOVATE 2025" in futuristic font, cinematic lighting
 ```
 
 **OR use this pattern:**

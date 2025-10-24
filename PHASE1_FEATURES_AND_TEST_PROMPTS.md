@@ -37,7 +37,7 @@
 
 #### Skip Mode (Direct Generation)
 ```
-"Skip dialogue mode. Generate a TRON movie style scene with a figure standing on a glowing digital grid, neon cyan and magenta lights, text overlay saying 'DEATH TO THE SDLC' in futuristic font, cinematic lighting"
+"Skip dialogue mode. Generate a TRON movie style scene with a figure standing on a glowing digital grid, neon cyan and magenta lights, text overlay saying 'INNOVATE 2025' in futuristic font, cinematic lighting"
 ```
 **Expected:** No questions, immediate generation
 **Success:** Image generates directly without dialogue
@@ -128,12 +128,12 @@
 
 #### TRON Scene Verification (Your Example)
 ```
-"TRON movie style scene, figure on glowing digital grid, neon cyan and magenta lights, text 'DEATH TO THE SDLC', futuristic font, cinematic lighting"
+"TRON movie style scene, figure on glowing digital grid, neon cyan and magenta lights, text 'INNOVATE 2025', futuristic font, cinematic lighting"
 ```
 **Expected Verification Checklist:**
 - ✓ Subject Matter: TRON-style scene with figure on digital grid
 - ✓ Visual Elements: Glowing digital grid, neon lights
-- ✓ Text Presence: "DEATH TO THE SDLC" in futuristic font
+- ✓ Text Presence: "INNOVATE 2025" in futuristic font
 - ✓ Colors: Cyan and magenta neon lights
 - ✓ Style: Cinematic lighting, futuristic aesthetic
 
@@ -358,7 +358,7 @@ Step 3: "Resume conversation [conversation_id]"
 
 **TRON Scene (Your Example):**
 ```
-"Skip dialogue. Generate TRON movie style scene, figure on glowing digital grid, neon cyan and magenta lights, text 'DEATH TO THE SDLC', futuristic font, cinematic"
+"Skip dialogue. Generate TRON movie style scene, figure on glowing digital grid, neon cyan and magenta lights, text 'INNOVATE 2025', futuristic font, cinematic"
 → No dialogue
 → Verification mentions TRON elements, text, colors
 → Check if text is actually present in image

@@ -95,7 +95,7 @@ Create a logo for my coffee shop called "Sunrise Roasters"
 ```
 Skip dialogue mode. Generate a TRON movie style scene with a figure
 standing on a glowing digital grid, neon cyan and magenta lights,
-text overlay saying "DEATH TO THE SDLC" in futuristic font,
+text overlay saying "INNOVATE 2025" in futuristic font,
 cinematic lighting
 ```
 **Expected:** Direct generation + verification checklist mentioning text
@@ -134,7 +134,7 @@ Create a professional presentation background for a tech conference keynote
 - **Checks requirements checklist:**
   - ✓ Subject matter: TRON scene
   - ✓ Visual elements: Digital grid, neon lights
-  - ✓ Text presence: "DEATH TO THE SDLC"
+  - ✓ Text presence: "INNOVATE 2025"
   - ✓ Colors: Cyan and magenta
   - ✓ Style: Cinematic, futuristic
 - Shows verification report with reminders
